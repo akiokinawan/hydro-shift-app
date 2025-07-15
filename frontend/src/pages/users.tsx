@@ -255,86 +255,107 @@ const UserAdminPage: React.FC = () => {
           一般ユーザー ({regularUsers.length}名)
         </h2>
         
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
           gap: '20px'
-        }}>
+      }}>
           {regularUsers.map(u => (
-            <div key={u.id} style={{ 
-              background: 'white', 
-              borderRadius: '12px', 
-              padding: '20px', 
-              boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-              border: '1px solid #e0e0e0',
-              position: 'relative'
+          <div key={u.id} style={{ 
+            background: 'white', 
+            borderRadius: '12px', 
+            padding: '20px', 
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            border: '1px solid #e0e0e0',
+            position: 'relative'
+          }}>
+            {/* ユーザー情報 */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ 
+                background: getRoleBgColor(u.role), 
+                color: '#222', 
+                borderRadius: '50%', 
+                width: '50px', 
+                height: '50px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '24px',
+                marginRight: '16px'
+              }}>
+                <span style={{ color: '#222' }}>👤</span>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>{u.name}</h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>{u.email}</p>
+              </div>
+            </div>
+            
+            {/* 権限バッジ */}
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{ 
+                background: getRoleColor(u.role), 
+                color: 'white', 
+                padding: '4px 12px', 
+                borderRadius: '20px', 
+                fontSize: '12px', 
+                fontWeight: 'bold' 
+              }}>
+                {getRoleLabel(u.role)}
+              </span>
+            </div>
+            
+            {/* 詳細情報 */}
+            <div style={{ 
+              background: '#f8f9fa', 
+              padding: '12px', 
+              borderRadius: '8px', 
+              marginBottom: '16px' 
             }}>
-              {/* ユーザー情報 */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-                <div style={{ 
-                  background: getRoleBgColor(u.role), 
-                  color: '#222', 
-                  borderRadius: '50%', 
-                  width: '50px', 
-                  height: '50px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                  marginRight: '16px'
-                }}>
-                  <span style={{ color: '#222' }}>👤</span>
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>{u.name}</h3>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>{u.email}</p>
-                </div>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>ユーザーID</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{u.id}</div>
+            </div>
+            
+            <div style={{ 
+              background: '#f8f9fa', 
+              padding: '12px', 
+              borderRadius: '8px', 
+              marginBottom: '16px' 
+            }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>作成日</div>
+              <div style={{ fontSize: '14px', color: '#333' }}>
+                {new Date(u.created_at).toLocaleDateString('ja-JP')}
               </div>
+            </div>
+            
+            {/* 操作ボタン */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => handleEdit(u)}
+                style={{
+                  flex: 1,
+                  background: '#1976d2',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#1565c0'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#1976d2'}
+              >
+                編集
+              </button>
               
-              {/* 権限バッジ */}
-              <div style={{ marginBottom: '16px' }}>
-                <span style={{ 
-                  background: getRoleColor(u.role), 
-                  color: 'white', 
-                  padding: '4px 12px', 
-                  borderRadius: '20px', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold' 
-                }}>
-                  {getRoleLabel(u.role)}
-                </span>
-              </div>
-              
-              {/* 詳細情報 */}
-              <div style={{ 
-                background: '#f8f9fa', 
-                padding: '12px', 
-                borderRadius: '8px', 
-                marginBottom: '16px' 
-              }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>ユーザーID</div>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{u.id}</div>
-              </div>
-              
-              <div style={{ 
-                background: '#f8f9fa', 
-                padding: '12px', 
-                borderRadius: '8px', 
-                marginBottom: '16px' 
-              }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>作成日</div>
-                <div style={{ fontSize: '14px', color: '#333' }}>
-                  {new Date(u.created_at).toLocaleDateString('ja-JP')}
-                </div>
-              </div>
-              
-              {/* 操作ボタン */}
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {u.id !== user.id && (
                 <button 
-                  onClick={() => handleEdit(u)}
+                  onClick={() => setShowDeleteConfirm(u.id)}
                   style={{
                     flex: 1,
-                    background: '#1976d2',
+                    background: '#f44336',
                     color: 'white',
                     border: 'none',
                     padding: '8px 16px',
@@ -344,36 +365,15 @@ const UserAdminPage: React.FC = () => {
                     cursor: 'pointer',
                     transition: 'background 0.2s'
                   }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#1565c0'}
-                  onMouseOut={(e) => e.currentTarget.style.background = '#1976d2'}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#d32f2f'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#f44336'}
                 >
-                  編集
+                  削除
                 </button>
-                
-                {u.id !== user.id && (
-                  <button 
-                    onClick={() => setShowDeleteConfirm(u.id)}
-                    style={{
-                      flex: 1,
-                      background: '#f44336',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#d32f2f'}
-                    onMouseOut={(e) => e.currentTarget.style.background = '#f44336'}
-                  >
-                    削除
-                  </button>
-                )}
-              </div>
+              )}
             </div>
-          ))}
+          </div>
+        ))}
         </div>
       </div>
 
@@ -526,9 +526,9 @@ const UserAdminPage: React.FC = () => {
                 キャンセル
               </button>
               <button 
-                onClick={handleEditSave}
-                disabled={editLoading}
-                style={{
+                onClick={handleEditSave} 
+                disabled={editLoading} 
+                style={{ 
                   background: editLoading ? '#ccc' : '#1976d2',
                   color: 'white',
                   border: 'none',
