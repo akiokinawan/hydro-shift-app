@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { fetchScheduleById, fetchWeather, postHistory } from "../../lib/api";
+import { fetchScheduleById, fetchWeather, createHistory } from "../../lib/api";
 
 const userId = 2; // 仮: ログインユーザーID固定
 
@@ -32,7 +32,7 @@ const ScheduleDetail: React.FC = () => {
     if (!schedule) return;
     setLoading(true);
     try {
-      await postHistory({
+      await createHistory({
         schedule_id: schedule.id,
         user_id: userId,
         executed_at: new Date().toISOString(),
