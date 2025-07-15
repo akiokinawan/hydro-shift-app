@@ -35,6 +35,7 @@ export interface UserUpdate {
   name?: string;
   email?: string;
   role?: string;
+  password?: string;
 }
 
 /**
