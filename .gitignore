@@ -1,0 +1,30 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.next/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+
+# Docker
+*.env
+.env.*
+*.sqlite3
+db.sqlite3
+
+# その他
+*.log
+coverage/ 

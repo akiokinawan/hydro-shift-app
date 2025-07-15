@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "name": "メイン畑",
+    "location_text": "東京都練馬区大泉町1-1-1",
+    "latitude": 35.7619,
+    "longitude": 139.6081,
+    "image": "field1.jpg",
+    "created_by": 1,
+    "created_at": "2024-06-01T00:00:00Z",
+    "updated_at": "2024-06-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "サブ畑A",
+    "location_text": "東京都練馬区大泉町2-2-2",
+    "latitude": 35.7620,
+    "longitude": 139.6082,
+    "image": "field2.jpg",
+    "created_by": 1,
+    "created_at": "2024-06-02T00:00:00Z",
+    "updated_at": "2024-06-02T00:00:00Z"
+  },
+  {
+    "id": 3,
+    "name": "サブ畑B",
+    "location_text": "東京都練馬区大泉町3-3-3",
+    "latitude": 35.7621,
+    "longitude": 139.6083,
+    "image": "field3.jpg",
+    "created_by": 2,
+    "created_at": "2024-06-03T00:00:00Z",
+    "updated_at": "2024-06-03T00:00:00Z"
+  }
+] 

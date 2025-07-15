@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "name": "山田太郎",
+    "email": "taro@example.com",
+    "role": "admin",
+    "created_at": "2024-06-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "佐藤花子",
+    "email": "hanako@example.com",
+    "role": "user",
+    "created_at": "2024-06-02T00:00:00Z"
+  },
+  {
+    "id": 3,
+    "name": "田中次郎",
+    "email": "jiro@example.com",
+    "role": "user",
+    "created_at": "2024-06-03T00:00:00Z"
+  },
+  {
+    "id": 4,
+    "name": "鈴木三郎",
+    "email": "saburo@example.com",
+    "role": "user",
+    "created_at": "2024-06-04T00:00:00Z"
+  }
+] 
