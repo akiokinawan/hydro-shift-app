@@ -8,3 +8,5 @@ PyJWT
 python-multipart
 passlib[bcrypt]
 email-validator
+fastapi==0.116.1
+starlette==0.47.1
