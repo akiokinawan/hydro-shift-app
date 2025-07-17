@@ -100,6 +100,7 @@ const CalendarPage: React.FC = () => {
   const [unregisterLoading, setUnregisterLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [currentDate, setCurrentDate] = useState(today);
+  const [firstLoad, setFirstLoad] = useState(true);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 600);
@@ -120,7 +121,10 @@ const CalendarPage: React.FC = () => {
         setError(null);
       })
       .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setFirstLoad(false);
+      });
   }, [currentDate]);
 
   // schedules取得後、ログインユーザーの当番日をmyDutyDatesに反映
@@ -212,7 +216,7 @@ const CalendarPage: React.FC = () => {
     weekMatrix = getMonthMatrix(year, month);
   }
 
-  if (loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
+  if (loading && firstLoad) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
 
   return (

@@ -15,6 +15,9 @@ const ProfilePage: React.FC = () => {
   const [pwMsg, setPwMsg] = useState<string | null>(null);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSaving, setPwSaving] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -30,13 +33,53 @@ const ProfilePage: React.FC = () => {
     return null;
   }
 
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (!validateEmail(value)) {
+      setEmailError('メールアドレスの形式が正しくありません');
+    } else {
+      setEmailError(null);
+    }
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setName(value);
+    if (value.length > 40) {
+      setNameError('名前は40文字以内で入力してください');
+    } else {
+      setNameError(null);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     setMsg(null);
+    setEmailError(null);
+    setNameError(null);
+    if (name.length > 40) {
+      setNameError('名前は40文字以内で入力してください');
+      setSaving(false);
+      return;
+    }
+    if (!validateEmail(email)) {
+      setEmailError('メールアドレスの形式が正しくありません');
+      setSaving(false);
+      return;
+    }
+    if (name.trim() === '') {
+      setSaving(false);
+      return;
+    }
     try {
       await updateUser(user.id, { name, email });
-      setMsg("保存しました");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2500);
       // localStorageのuser情報も更新
       const updated = { ...user, name, email };
       localStorage.setItem('user', JSON.stringify(updated));
@@ -77,19 +120,43 @@ const ProfilePage: React.FC = () => {
       <div style={{ color: '#666', fontSize: '0.95em', marginBottom: 12 }}>
         ※この画面ではご自身のユーザー情報のみ編集できます。
       </div>
+      {showToast && (
+        <div style={{
+          position: 'fixed',
+          top: 24,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#f5f5f5',
+          color: '#43a047',
+          padding: '12px 24px',
+          borderRadius: 8,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+          zIndex: 2000,
+          fontSize: 16,
+          fontWeight: 500,
+          letterSpacing: 1,
+          border: '1px solid #ddd',
+          minWidth: 180,
+          textAlign: 'center'
+        }}>
+          保存しました
+        </div>
+      )}
       {msg && <div style={{ color: 'green', marginBottom: 12 }}>{msg}</div>}
       {error && <div style={{ color: 'red', marginBottom: 12 }}>{error}</div>}
       <div style={{ marginBottom: 16 }}>
         <label>名前<br />
-          <input type="text" value={name} onChange={e => setName(e.target.value)} style={{ width: '100%' }} />
+          <input type="text" value={name} onChange={handleNameChange} style={{ width: '100%' }} maxLength={40} />
+          {nameError && <div style={{ color: 'red', fontSize: '13px', marginTop: 4 }}>{nameError}</div>}
         </label>
       </div>
       <div style={{ marginBottom: 16 }}>
         <label>メール<br />
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%' }} />
+          <input type="email" value={email} onChange={handleEmailChange} style={{ width: '100%' }} />
+          {emailError && <div style={{ color: 'red', fontSize: '13px', marginTop: 4 }}>{emailError}</div>}
         </label>
       </div>
-      <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: 8 }}>
+      <button onClick={handleSave} disabled={saving || !!emailError || !!nameError || name.trim() === ''} style={{ width: '100%', padding: 8 }}>
         {saving ? '保存中...' : '保存'}
       </button>
       <div style={{ marginTop: 32, padding: 20, border: '1px solid #eee', borderRadius: 8, background: '#fafafa' }}>
@@ -106,14 +173,11 @@ const ProfilePage: React.FC = () => {
             <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={{ width: '100%' }} />
           </label>
         </div>
-        <button onClick={handlePasswordChange} disabled={pwSaving} style={{ width: '100%', padding: 8 }}>
+        <button onClick={handlePasswordChange} disabled={pwSaving || newPassword.trim() === '' || confirmPassword.trim() === ''} style={{ width: '100%', padding: 8 }}>
           {pwSaving ? '変更中...' : 'パスワードを変更'}
         </button>
       </div>
-      <div style={{ marginTop: 24 }}>
-        <button onClick={logout} style={{ width: '100%', padding: 8, background: '#f5f5f5', color: '#888', fontWeight: 600, border: '1px solid #ccc', borderRadius: 4 }}>ログアウト</button>
-      </div>
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16, textAlign: 'center' }}>
         <a href="/">ダッシュボードへ戻る</a>
       </div>
     </main>

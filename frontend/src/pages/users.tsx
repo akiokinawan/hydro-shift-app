@@ -19,6 +19,7 @@ const UserAdminPage: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [editEmailError, setEditEmailError] = useState<string | null>(null);
   const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
 
@@ -51,9 +52,31 @@ const UserAdminPage: React.FC = () => {
     setEditRole(u.role);
   };
 
+  const validateEmail = (email: string) => {
+    // シンプルなEmail形式チェック
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // メールアドレス入力時にリアルタイムバリデーション
+  const handleEditEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEditEmail(value);
+    if (!validateEmail(value)) {
+      setEditEmailError('メールアドレスの形式が正しくありません');
+    } else {
+      setEditEmailError(null);
+    }
+  };
+
   const handleEditSave = async () => {
     if (!editUser) return;
     setEditLoading(true);
+    setEditEmailError(null);
+    if (!validateEmail(editEmail)) {
+      setEditEmailError('メールアドレスの形式が正しくありません');
+      setEditLoading(false);
+      return;
+    }
     try {
       await updateUser(editUser.id, { name: editName, email: editEmail, role: editRole });
       setEditUser(null);
@@ -483,7 +506,7 @@ const UserAdminPage: React.FC = () => {
               <input 
                 type="email" 
                 value={editEmail} 
-                onChange={e => setEditEmail(e.target.value)} 
+                onChange={handleEditEmailChange} 
                 style={{ 
                   width: '100%', 
                   padding: '8px', 
@@ -492,6 +515,7 @@ const UserAdminPage: React.FC = () => {
                   fontSize: '14px'
                 }} 
               />
+              {editEmailError && <div style={{ color: 'red', fontSize: '13px', marginTop: 4 }}>{editEmailError}</div>}
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px' }}>権限</label>
@@ -527,7 +551,7 @@ const UserAdminPage: React.FC = () => {
               </button>
               <button 
                 onClick={handleEditSave} 
-                disabled={editLoading} 
+                disabled={editLoading || !!editEmailError} 
                 style={{ 
                   background: editLoading ? '#ccc' : '#1976d2',
                   color: 'white',
@@ -535,7 +559,7 @@ const UserAdminPage: React.FC = () => {
                   padding: '8px 16px',
                   borderRadius: '6px',
                   fontSize: '14px',
-                  cursor: editLoading ? 'default' : 'pointer'
+                  cursor: editLoading || !!editEmailError ? 'not-allowed' : 'pointer'
                 }}
               >
                 {editLoading ? '保存中...' : '保存'}

@@ -260,7 +260,7 @@ const Dashboard: React.FC = () => {
         {weather && (
           <div style={{ background: 'white', padding: 20, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={{ color: '#1976d2', margin: 0, fontSize: 18 }}>今日の天気</h3>
+              <h3 style={{ color: '#1976d2', margin: 0, fontSize: 18 }}>現在の天気</h3>
               <a 
                 href="https://weather.yahoo.co.jp/weather/"
                 target="_blank" 
@@ -285,7 +285,7 @@ const Dashboard: React.FC = () => {
             <div className="weather-info-row">
               <div style={{ flex: 1, marginRight: 20 }}>
                 {weather.icon && (
-                  <div style={{ background: 'white', borderRadius: 12, padding: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                  <div style={{ background: 'white', borderRadius: 12, padding: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', width: 84, height: 84, minWidth: 84, minHeight: 84, maxWidth: 84, maxHeight: 84, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img 
                       src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`} 
                       alt="天気アイコン" 
@@ -490,8 +490,8 @@ const Dashboard: React.FC = () => {
             grid-template-columns: 1fr;
           }
           .weather-info-row {
-            flex-direction: column;
-            align-items: flex-start;
+            flex-direction: row !important;
+            align-items: center;
           }
           .weather-stats-grid {
             grid-template-columns: 1fr;
