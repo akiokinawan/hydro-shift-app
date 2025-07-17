@@ -1,8 +1,17 @@
 FROM python:3.10
+
 WORKDIR /app
+
+# 依存ファイルのインストール
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+
+# アプリとスクリプトをコピー
 COPY . .
+
+# start.sh を使ってマイグレーション → アプリ起動
+RUN chmod +x /app/start.sh
+
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+CMD ["/app/start.sh"]
