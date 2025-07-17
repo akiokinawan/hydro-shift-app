@@ -252,6 +252,10 @@ def update_field(field_id: int, field_update: FieldUpdate, db: Session = Depends
     
     # 住所の更新
     if field_update.location_text is not None:
+        # 既存の住所と異なる場合のみ緯度経度をnullにする
+        if db_field.location_text != field_update.location_text:
+            db_field.latitude = None
+            db_field.longitude = None
         db_field.location_text = field_update.location_text
         lat, lon = geocode_address(field_update.location_text)
         if lat is None or lon is None:

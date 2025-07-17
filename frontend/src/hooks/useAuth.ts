@@ -29,7 +29,7 @@ export function useAuth(): AuthState {
       const stored = localStorage.getItem('user');
       if (stored) {
         try {
-          setUser(JSON.parse(stored));
+        setUser(JSON.parse(stored));
         } catch (error) {
           console.error('ユーザー情報の解析に失敗しました:', error);
           localStorage.removeItem('user');

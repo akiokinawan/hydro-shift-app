@@ -190,3 +190,19 @@ textarea {
     font-size: 1.2rem;
   }
 } 
+
+@media (max-width: 600px) {
+  .calendar-table,
+  .calendar-table thead,
+  .calendar-table tbody,
+  .calendar-table th,
+  .calendar-table td,
+  .calendar-table tr {
+    display: table;
+    width: 100%;
+  }
+  .calendar-table th, .calendar-table td {
+    font-size: 12px;
+    padding: 4px 2px;
+  }
+} 

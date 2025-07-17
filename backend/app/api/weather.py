@@ -19,6 +19,7 @@ from app.services.weather_service import (
     get_yesterday_weather, 
     get_accurate_daily_rainfall
 )
+from app.services.weather_cache_service import get_cached_weather, set_cached_weather, clear_expired_cache, cleanup_cache
 
 router = APIRouter()
 
@@ -113,18 +114,18 @@ def get_weather(
 ):
     """
     指定された畑の天気情報を取得（外部API連携）
-    
-    Args:
-        field_id: 畑ID
-        date: 日付
-        db: データベースセッション
-        
-    Returns:
-        Weather: 天気情報
-        
-    Raises:
-        HTTPException: 畑が見つからない場合、または天気API取得に失敗した場合
     """
+    # 定期的に古いキャッシュを削除（確率ベースで実行）
+    import random
+    if random.random() < 0.05:  # 5%の確率で包括的クリーンアップ実行
+        cleanup_result = cleanup_cache(
+            db, 
+            cache_duration_minutes=15, 
+            days_to_keep=7, 
+            max_cache_size=1000
+        )
+        print(f"[Weather Cache Cleanup] 削除されたキャッシュ: {cleanup_result}")
+    
     # 畑の存在確認
     field = db.query(FieldModel).filter(FieldModel.id == field_id).first()
     if field is None:
@@ -135,10 +136,17 @@ def get_weather(
     if not api_key:
         raise HTTPException(status_code=400, detail=f"Weather APIキー未設定:{api_key}")
     
-    # 住所から緯度経度取得
-    lat, lon = geocode_address(field.location_text)
+    # DBに緯度・経度が保存されていればそれを使う。なければジオコーディングAPIを呼ぶ
+    lat, lon = field.latitude, field.longitude
     if lat is None or lon is None:
-        raise HTTPException(status_code=502, detail="住所から緯度経度の取得に失敗しました")
+        lat, lon = geocode_address(field.location_text)
+        if lat is None or lon is None:
+            raise HTTPException(status_code=502, detail="住所から緯度経度の取得に失敗しました")
+    
+    # キャッシュから天気情報を取得（15分間有効）
+    cached_weather = get_cached_weather(db, lat, lon, date, cache_duration_minutes=15)
+    if cached_weather:
+        return Weather(**cached_weather)
     
     # 現在の天気データを取得
     current_weather = get_weather_by_latlon(lat, lon, api_key)
@@ -172,7 +180,7 @@ def get_weather(
     humidity = current_weather.get("main", {}).get("humidity")
     icon = current_weather.get("weather", [{}])[0].get("icon")
     
-    return Weather(
+    weather_response = Weather(
         date=date,
         weather=weather,
         rain_mm=current_rain_mm,
@@ -181,6 +189,11 @@ def get_weather(
         humidity=humidity,
         icon=icon
     )
+    
+    # 天気情報をキャッシュに保存
+    set_cached_weather(db, lat, lon, date, weather_response.dict())
+    
+    return weather_response
 
 @router.get("/api/weather/forecast", response_model=list[Weather])
 def get_weather_forecast(

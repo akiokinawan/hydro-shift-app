@@ -4,6 +4,7 @@
  */
 
 import type { AppProps } from "next/app";
+import Head from "next/head";
 import Layout from "../components/Layout";
 import "../styles/global.css";
 
@@ -12,10 +13,18 @@ import "../styles/global.css";
  * すべてのページに共通のレイアウトを適用
  */
 function MyApp({ Component, pageProps }: AppProps) {
+
   return (
-    <Layout>
-      <Component {...pageProps} />
-    </Layout>
+    <>
+      <Head>
+        <title>Hydro-Shift</title>
+        <link rel="icon" href="/icon.png" />
+        <meta name="description" content="畑の水かけ当番管理システム" />
+      </Head>
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
+    </>
   );
 }
 

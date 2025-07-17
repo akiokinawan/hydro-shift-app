@@ -8,6 +8,24 @@ const fieldId = 1; // 仮: 畑ID固定
 const today = new Date();
 const yyyyMM = today.toISOString().slice(0, 7);
 
+// 今日の日付を取得する関数
+const getTodayDate = () => {
+  const now = new Date();
+  return now.getDate();
+};
+
+// 今日の年を取得する関数
+const getTodayYear = () => {
+  const now = new Date();
+  return now.getFullYear();
+};
+
+// 今日の月を取得する関数
+const getTodayMonth = () => {
+  const now = new Date();
+  return now.getMonth();
+};
+
 function getMonthMatrix(year: number, month: number) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -45,6 +63,27 @@ function getCurrentWeekMatrix(year: number, month: number, date: number) {
   return [week];
 }
 
+const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
+const weekDaysMondayStart = ["月", "火", "水", "木", "金", "土", "日"];
+
+function getCurrentWeekMatrixMondayStart(year: number, month: number, date: number) {
+  // 今週の月曜～日曜の日付配列を返す
+  const current = new Date(year, month, date);
+  const dayOfWeek = (current.getDay() + 6) % 7; // 月曜=0, 日曜=6
+  const weekStart = new Date(year, month, date - dayOfWeek);
+  const week: (number | null)[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    if (d.getMonth() === month) {
+      week.push(d.getDate());
+    } else {
+      week.push(null);
+    }
+  }
+  return [week];
+}
+
 const CalendarPage: React.FC = () => {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,12 +98,21 @@ const CalendarPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const [registerLoading, setRegisterLoading] = useState(false);
   const [unregisterLoading, setUnregisterLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [currentDate, setCurrentDate] = useState(today);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 600);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // スケジュールを取得（現在の月のみ）
   useEffect(() => {
     setLoading(true);
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
     const yyyyMM = `${year}-${String(month + 1).padStart(2, '0')}`;
     fetchSchedules(fieldId, yyyyMM)
       .then((s) => {
@@ -73,7 +121,7 @@ const CalendarPage: React.FC = () => {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [currentDate]);
 
   // schedules取得後、ログインユーザーの当番日をmyDutyDatesに反映
   useEffect(() => {
@@ -112,9 +160,9 @@ const CalendarPage: React.FC = () => {
     return schedule ? schedule.user_id : null;
   };
 
-  // ユーザーごとの色を定義
+  // ユーザーごとの色を定義（明るい単色）
   const getUserColor = (userId: number) => {
-    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#795548', '#607D8B'];
+    const colors = ['#FF6B6B', '#4ECDC4', '#45D1DD', '#96B4D8', '#FFEAA7', '#DDA0DD', '#98D8DC', '#6F42C1'];
     return colors[userId % colors.length];
   };
 
@@ -145,11 +193,24 @@ const CalendarPage: React.FC = () => {
     return Object.values(userGroups);
   };
 
-  const year = today.getFullYear();
-  const month = today.getMonth(); // 0-indexed
-  const date = today.getDate();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth(); //0dexed
+  const date = currentDate.getDate();
   const monthMatrix = getMonthMatrix(year, month);
-  const weekMatrix = getCurrentWeekMatrix(year, month, date);
+  // 週カレンダーでは、今月の場合は今日の週、次月の場合はその月の1週目を表示
+  const todayYear = getTodayYear();
+  const todayMonth = getTodayMonth();
+  const todayDate = getTodayDate();
+  let weekMatrix;
+  if (tab === 'week') {
+    if (year === todayYear && month === todayMonth) {
+      weekMatrix = getCurrentWeekMatrixMondayStart(todayYear, todayMonth, todayDate);
+    } else {
+      weekMatrix = getCurrentWeekMatrixMondayStart(year, month, 1);
+    }
+  } else {
+    weekMatrix = getMonthMatrix(year, month);
+  }
 
   if (loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
@@ -157,6 +218,68 @@ const CalendarPage: React.FC = () => {
   return (
     <main style={{ padding: '16px', maxWidth: '100%', overflowX: 'hidden' }}>
       <h1 style={{ fontSize: '24px', marginBottom: '16px', textAlign: 'center' }}>カレンダー</h1>
+      
+      {/* 月切り替えボタン */}
+      <div style={{ maxWidth: '600px', margin: '0 auto 16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        {/* 今月以外の場合は前月ボタンを表示 */}
+        {(year > getTodayYear() || (year === getTodayYear() && month > getTodayMonth())) && (
+          <button
+            onClick={() => {
+              // 前月へ（年・月補正）
+              let newYear = year;
+              let newMonth = month - 1;
+              if (newMonth < 0) {
+                newYear -= 1;
+                newMonth = 11;
+              }
+              const newDate = new Date(newYear, newMonth, 1);
+              setCurrentDate(newDate);
+            }}
+            style={{
+              padding: '10px 16px',
+              border: 'none',
+              background: '#f0f0f0',
+              cursor: 'pointer',
+              fontSize: '16px',
+              color: '#000',
+              borderRadius: '6px',
+              minWidth: '70px',
+              touchAction: 'manipulation'
+            }}
+          >
+            ＜ 前月
+          </button>
+        )}
+        <div style={{ fontSize: '16px', fontWeight: 'bold', minWidth: '90px', textAlign: 'center' }}>
+          {year}年 {month + 1}月
+        </div>
+        <button
+          onClick={() => {
+            // 次月へ（年・月補正）
+            let newYear = year;
+            let newMonth = month + 1;
+            if (newMonth > 11) {
+              newYear += 1;
+              newMonth = 0;
+            }
+            const newDate = new Date(newYear, newMonth, 1);
+            setCurrentDate(newDate);
+          }}
+          style={{
+            padding: '10px 16px',
+            border: 'none',
+            background: '#f0f0f0',
+            cursor: 'pointer',
+            fontSize: '16px',
+            color: '#000',
+            borderRadius: '6px',
+            minWidth: '70px',
+            touchAction: 'manipulation'
+          }}
+        >
+          次月 ＞
+        </button>
+      </div>
       
       <div style={{ maxWidth: '600px', margin: '0 auto 16px', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
         <button onClick={() => setTab('month')} style={{ padding: '6px 20px', borderRadius: 8, border: tab === 'month' ? '2px solid #1976d2' : '1px solid #ccc', background: tab === 'month' ? '#1976d2' : '#f5f5f5', color: tab === 'month' ? '#fff' : '#333', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}>月カレンダー</button>
@@ -166,18 +289,99 @@ const CalendarPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'center', fontWeight: 600, marginBottom: 8 }}>
           {year}年 {month + 1}月
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fafafa', minWidth: '280px' }}>
+        {isMobile ? (
+          // モバイル時はリスト形式
+          <div>
+            {(tab === 'month' ? monthMatrix : weekMatrix).flat().map((d, idx) => {
+              if (!d) return null;
+              // 曜日を計算
+              const weekIndex = Math.floor(idx / 7);
+              const dayIndex = idx % 7;
+              const w = (tab === 'week' ? weekDaysMondayStart : weekDays)[dayIndex];
+              // 週カレンダー時の色分け
+              let weekColor = '#555';
+              if (tab === 'week') {
+                if (dayIndex === 6) weekColor = '#e53935'; // 日曜
+                if (dayIndex === 5) weekColor = '#1976d2'; // 土曜
+              } else {
+                if (dayIndex === 0) weekColor = '#e53935'; // 日曜
+                if (dayIndex === 6) weekColor = '#1976d2'; // 土曜
+              }
+              // 過去日は非表示（実際の今日の日付と比較）
+              const isPast = (new Date(year, month, d) < new Date(getTodayYear(), getTodayMonth(), getTodayDate()));
+              if (isPast) return null;
+              // 担当者名取得
+              const dutyUserName = getDutyUserName(d);
+              const isMyDuty = myDutyDates.includes(d);
+              const isOtherUserDuty = getOtherUserDutyDates().includes(d);
+              const isRegister = registerDates.includes(d);
+              const isUnregister = unregisterDates.includes(d);
+              // 当日の判定（実際の今日の日付と比較）
+              const isToday = (year === getTodayYear() && month === getTodayMonth() && d === getTodayDate());
+              let bg = 'transparent';
+              if (isToday) bg = '#1976d2';
+              else if (isMyDuty && isUnregister) bg = '#ffcdd2';
+              else if (isMyDuty) bg = '#ffe082';
+              else if (isRegister) bg = '#fff9c4';
+              return (
+                <div key={d} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, background: bg, borderRadius: 6, padding: '6px 8px', border: '1px solid #eee', cursor: d ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}
+                  onClick={() => {
+                    if (!d || isOtherUserDuty) return;
+                    if (isMyDuty) {
+                      setUnregisterDates((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+                    } else {
+                      setRegisterDates((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+                    }
+                  }}
+                >
+                  <span style={{ minWidth: 24, fontWeight: 600, color: weekColor, fontSize: 14 }}>{w}</span>
+                  <span style={{ minWidth: 24, textAlign: 'center', fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : '#222', fontSize: 16, marginLeft: 8 }}>{d}</span>
+                  {/* 担当者名表示（モバイルのみ） */}
+                  {dutyUserName && (
+                    <span style={{
+                      marginLeft: 12,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: isToday ? '#fff' : '#1976d2',
+                      maxWidth: 120,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {dutyUserName}{isMyDuty ? '（あなた）' : ''}
+                    </span>
+                  )}
+                  {isOtherUserDuty && (
+                    <span style={{ color: getUserColor(getDutyUserId(d)!), fontSize:14, marginLeft: 6 }}>●</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // PC時は従来通りテーブル
+          <table className="calendar-table" style={{ width: '100%', borderCollapse: 'collapse', background: '#fafafa', minWidth: '280px' }}>
           <thead>
             <tr>
-              {["日", "月", "火", "水", "木", "金", "土"].map((w) => (
+                {(tab === 'week' ? weekDaysMondayStart : weekDays).map((w, i) => {
+                  let weekColor = '#fff';
+                  if (tab === 'week') {
+                    if (i === 6) weekColor = '#e53935'; // 日曜
+                    if (i === 5) weekColor = '#1976d2'; // 土曜
+                  } else {
+                    if (i === 0) weekColor = '#e53935'; // 日曜
+                    if (i === 6) weekColor = '#1976d2'; // 土曜
+                  }
+                  return (
                 <th key={w} style={{ 
                   padding: '4px 2px', 
-                  color: '#fff', 
+                      color: weekColor, 
                   fontWeight: 500, 
                   fontSize: '12px',
                   background: '#adb5bd'
                 }}>{w}</th>
-              ))}
+                  );
+                })}
             </tr>
           </thead>
           <tbody>
@@ -185,29 +389,27 @@ const CalendarPage: React.FC = () => {
               <tr key={i}>
                 {week.map((d, j) => {
                   let color = '#222';
-                  if (d === date) {
-                    color = '#fff';
-                  } else if (j === 0) {
-                    color = '#e53935'; // 日曜
-                  } else if (j === 6) {
-                    color = '#1976d2'; // 土曜
-                  }
-                  // 当番登録済みかどうか
+                    if (tab === 'week') {
+                      if (j === 6) color = '#e53935'; // 日曜
+                      if (j === 5) color = '#1976d2'; // 土曜
+                    } else {
+                      if (j === 0) color = '#e53935'; // 日曜
+                      if (j === 6) color = '#1976d2'; // 土曜
+                    }
                   const isMyDuty = d ? myDutyDates.includes(d) : false;
-                  // 他のユーザーが登録済みかどうか
                   const isOtherUserDuty = d ? getOtherUserDutyDates().includes(d) : false;
-                  // 登録候補か
                   const isRegister = d ? registerDates.includes(d) : false;
-                  // 解除候補か
                   const isUnregister = d ? unregisterDates.includes(d) : false;
-                  // 過去日かどうか
-                  const isPast = d ? (new Date(year, month, d) < new Date(year, month, date)) : false;
-                  
+                    const isPast = d ? (new Date(year, month, d) < new Date(getTodayYear(), getTodayMonth(), getTodayDate())) : false;
+                    // 当日の判定（実際の今日の日付と比較）
+                    const isToday = d ? (year === getTodayYear() && month === getTodayMonth() && d === getTodayDate()) : false;
                   let bg = 'transparent';
-                  if (d === date) bg = '#1976d2';
-                  else if (isMyDuty && isUnregister) bg = '#ffcdd2'; // 解除候補:薄赤
-                  else if (isMyDuty) bg = '#ffe082'; // 登録済み:黄色
-                  else if (isRegister) bg = '#fff9c4'; // 登録候補:薄黄色
+                    if (isToday) bg = '#1976d2';
+                    else if (isMyDuty && isUnregister) bg = '#ffcdd2';
+                    else if (isMyDuty) bg = '#ffe082';
+                    else if (isRegister) bg = '#fff9c4';
+                    // 担当者名取得
+                    // const dutyUserName = d ? getDutyUserName(d) : null; // ← 担当者名はPC表示では出さない
                   return (
                     <td
                       key={j}
@@ -218,8 +420,8 @@ const CalendarPage: React.FC = () => {
                         textAlign: 'center',
                         background: bg,
                         color,
-                        borderRadius: d === date ? 8 : 0,
-                        fontWeight: d === date ? 700 : 400,
+                          borderRadius: isToday ? 8 : 0,
+                          fontWeight: isToday ? 700 : 400,
                         border: '1px solid #eee',
                         position: 'relative',
                         cursor: d && !isPast && !isOtherUserDuty ? 'pointer' : 'not-allowed',
@@ -229,14 +431,12 @@ const CalendarPage: React.FC = () => {
                       onClick={() => {
                         if (!d || isPast || isOtherUserDuty) return;
                         if (isMyDuty) {
-                          // 解除候補トグル
                           setUnregisterDates((prev) =>
                             prev.includes(d)
                               ? prev.filter((x) => x !== d)
                               : [...prev, d]
                           );
                         } else {
-                          // 登録候補トグル
                           setRegisterDates((prev) =>
                             prev.includes(d)
                               ? prev.filter((x) => x !== d)
@@ -246,12 +446,13 @@ const CalendarPage: React.FC = () => {
                       }}
                     >
                       {d ? (
-                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '12px', background: d === date ? '#1976d2' : 'transparent', color: d === date ? '#fff' : color, fontWeight: d === date ? 700 : 500 }}>
+                          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '12px', background: isToday ? '#1976d2' : 'transparent', color: isToday ? '#fff' : color, fontWeight: isToday ? 700 : 500 }}>
                           <div style={{ fontSize: '12px', lineHeight: 1, marginBottom: isOtherUserDuty ? 2 : 0 }}>{d}</div>
+                            {/* 担当者名表示はPC表示では出さない */}
                           {isOtherUserDuty && (
                             <span style={{ 
                               color: getUserColor(getDutyUserId(d)!),
-                              fontSize: 6,
+                                fontSize: 8,
                               lineHeight: 1
                             }}>
                               ●
@@ -266,7 +467,9 @@ const CalendarPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        )}
       </div>
+      
       <div style={{ maxWidth: '600px', margin: '0 auto', marginBottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 16px' }}>
         <div style={{ fontSize: '14px', color: '#666', marginBottom: 8, fontWeight: 500, textAlign: 'center' }}>水かけ当番日: {myDutyDates.length === 0 ? '未登録' : myDutyDates.sort((a,b)=>a-b).join(', ')}日</div>
         <div style={{ display: 'flex', gap: 16, marginTop: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -283,7 +486,10 @@ const CalendarPage: React.FC = () => {
                   action: 'register',
                 });
                 }
-                setMyDutyDates((prev) => Array.from(new Set([...prev, ...registerDates])));
+                // API後に再取得
+                const yyyyMM = `${year}-${String(month + 1).padStart(2, '0')}`;
+                const newSchedules = await fetchSchedules(fieldId, yyyyMM);
+                setSchedules(newSchedules);
                 setRegisterDates([]);
               } catch (e) {
                 alert('登録に失敗しました');
@@ -323,7 +529,10 @@ const CalendarPage: React.FC = () => {
                   action: 'unregister',
                 });
                 }
-                setMyDutyDates((prev) => prev.filter((x) => !unregisterDates.includes(x)));
+                // API後に再取得
+                const yyyyMM = `${year}-${String(month + 1).padStart(2, '0')}`;
+                const newSchedules = await fetchSchedules(fieldId, yyyyMM);
+                setSchedules(newSchedules);
                 setUnregisterDates([]);
               } catch (e) {
                 alert('解除に失敗しました');
@@ -356,7 +565,7 @@ const CalendarPage: React.FC = () => {
       {/* 凡例 */}
       {getOtherUserDuties().length > 0 && (
         <div style={{ maxWidth: '600px', margin: '0 auto 20px', padding: '16px', background: '#f9f9f9', borderRadius: 8, border: '1px solid #e0e0e0' }}>
-          <h4 style={{ margin: '0 0 12px 0', color: '#333', fontSize: '14px' }}>他のユーザーの当番</h4>
+          <h4 style={{ margin: '0 0 12px 0', color: '#333', fontSize: '14px' }}>担当者</h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
             {getOtherUserDuties().map((userDuty) => (
               <div key={userDuty.userId} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -376,15 +585,10 @@ const CalendarPage: React.FC = () => {
         </div>
       )}
       
-      <ul>
-        {schedules.map((sch) => (
-          <li key={sch.id}>
-            <Link href={`/schedule/${sch.id}`}>{sch.date}：{sch.user.name}（{sch.status}）</Link>
-          </li>
-        ))}
-      </ul>
-      <ul>
-      </ul>
+      {/* ダッシュボードへのリンクをページ下部に配置 */}
+      <div style={{ marginTop: 24, textAlign: 'center' }}>
+        <a href="/" style={{ color: '#1976d2', textDecoration: 'none' }}>ダッシュボードへ戻る</a>
+      </div>
     </main>
   );
 };

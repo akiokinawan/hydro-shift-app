@@ -5,6 +5,7 @@
 
 import React, { ReactNode } from "react";
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '../hooks/useAuth';
 
 interface LayoutProps {
@@ -25,6 +26,8 @@ const handleLogout = (): void => {
  */
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const isLoginPage = router.pathname === '/login';
 
   return (
     <div>
@@ -37,20 +40,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         borderBottom: '1px solid #eee' 
       }}>
         {/* アプリケーションタイトル */}
-        <Link href="/" legacyBehavior>
-          <a style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 700 }}>
-            <h2 style={{ margin: 0, display: 'inline' }}>畑の水かけ当番アプリ</h2>
-          </a>
-        </Link>
+        {isLoginPage ? (
+          <div style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 700, cursor: 'default' }}>
+            <h2 style={{ margin: 0, display: 'inline' }}>Hydro-Shift</h2>
+          </div>
+        ) : (
+          <Link href="/" legacyBehavior>
+            <a style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 700 }}>
+              <h2 style={{ margin: 0, display: 'inline' }}>Hydro-Shift</h2>
+            </a>
+          </Link>
+        )}
         
         {/* ナビゲーション */}
         <nav>
-          {!authLoading && user && (
+          {!authLoading && user && !isLoginPage && (
             <button 
               onClick={handleLogout}
               className="logout-button"
             >
-              ログアウト
+              Logout
             </button>
           )}
         </nav>
@@ -66,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           align-items: center;
           text-decoration: none;
           color: #333;
-          font-weight: 500;
+          font-weight: 700;
           background: #f5f5f5;
           border-radius: 20px;
           padding: 6px 16px;

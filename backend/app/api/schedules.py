@@ -95,9 +95,15 @@ def get_schedules(
     if month:
         # month形式: "2024-06" → その月のスケジュールを取得
         year, month_num = month.split("-")
+        year = int(year)
+        month_num = int(month_num)
+        if month_num < 12:
+            next_month = date(year, month_num + 1, 1)
+        else:
+            next_month = date(year + 1, 1, 1)
         query = query.filter(
-            ScheduleModel.date >= date(int(year), int(month_num), 1),
-            ScheduleModel.date < date(int(year), int(month_num) + 1, 1) if int(month_num) < 12 else date(int(year) + 1, 1, 1)
+            ScheduleModel.date >= date(year, month_num, 1),
+            ScheduleModel.date < next_month
         )
     
     schedules = query.all()

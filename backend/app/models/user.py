@@ -36,6 +36,7 @@ class User(Base):
     # タイムスタンプ
     created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="作成日時")
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), comment="更新日時")
+    deleted_at = Column(DateTime(timezone=True), nullable=True, comment="論理削除日時")
 
     # リレーション
     fields = relationship("Field", back_populates="creator")

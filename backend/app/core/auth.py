@@ -48,8 +48,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     except jwt.PyJWTError:
         raise credentials_exception
     
-    # データベースからユーザー情報を取得
-    user = db.query(UserModel).filter(UserModel.id == int(user_id)).first()
+    # データベースからユーザー情報を取得（論理削除されていないユーザーのみ）
+    user = db.query(UserModel).filter(UserModel.id == int(user_id), UserModel.deleted_at.is_(None)).first()
     if user is None:
         raise credentials_exception
     

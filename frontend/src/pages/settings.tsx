@@ -402,15 +402,7 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div style={{ marginTop: 32, textAlign: 'center' }}>
-        <Link href="/" style={{
-          background: '#1976d2',
-          color: 'white',
-          padding: '12px 24px',
-          borderRadius: 8,
-          textDecoration: 'none',
-          fontWeight: 500,
-          display: 'inline-block'
-        }}>
+        <Link href="/" style={{ color: '#1976d2', textDecoration: 'none' }}>
           ダッシュボードへ戻る
         </Link>
       </div>

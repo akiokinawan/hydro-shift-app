@@ -208,7 +208,7 @@ def seed_schedules(session, data_dir: str) -> bool:
             if status_enum is None:
                 print(f"  エラー: 無効なstatus値: {schedule_data['status']}")
                 continue
-            
+                
             # スケジュールの作成
             schedule = Schedule(
                 field_id=schedule_data["field_id"],

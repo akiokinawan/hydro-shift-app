@@ -8,6 +8,7 @@ from .user import User, UserRole
 from .field import Field
 from .schedule import Schedule, ScheduleStatus
 from .history import History
+from .weather_cache import WeatherCache
 
 # 外部からインポート可能なモデルクラス
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "Field",
     "Schedule",
     "ScheduleStatus",
-    "History"
+    "History",
+    "WeatherCache"
 ] 

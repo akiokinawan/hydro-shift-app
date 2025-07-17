@@ -5,12 +5,12 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 from typing import List, Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.models import User as UserModel, UserRole
+from app.models import User as UserModel, UserRole, Schedule, History
 from app.core.auth import get_current_user, get_current_active_admin
 from app.api.auth import pwd_context
 
@@ -18,7 +18,7 @@ router = APIRouter()
 
 class UserBase(BaseModel):
     """ユーザー基本情報のモデル"""
-    name: str
+    name: constr(max_length=40)
     email: str
     role: str
 
@@ -27,6 +27,7 @@ class User(UserBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -37,7 +38,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """ユーザー更新リクエストのモデル"""
-    name: Optional[str] = None
+    name: Optional[constr(max_length=40)] = None
     email: Optional[str] = None
     role: Optional[str] = None
     password: Optional[str] = None
@@ -54,7 +55,7 @@ def list_users(db: Session = Depends(get_db), current_user: UserModel = Depends(
     Returns:
         List[User]: ユーザー一覧
     """
-    users = db.query(UserModel).all()
+    users = db.query(UserModel).filter(UserModel.deleted_at.is_(None)).all()
     return users
 
 @router.get("/api/users/{user_id}", response_model=User)
@@ -72,7 +73,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     Raises:
         HTTPException: ユーザーが見つからない場合
     """
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    user = db.query(UserModel).filter(UserModel.id == user_id, UserModel.deleted_at.is_(None)).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -139,7 +140,7 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
     Raises:
         HTTPException: ユーザーが見つからない場合、またはメールアドレスが重複している場合
     """
-    db_user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    db_user = db.query(UserModel).filter(UserModel.id == user_id, UserModel.deleted_at.is_(None)).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -152,7 +153,8 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         # メールアドレスの重複チェック
         existing_user = db.query(UserModel).filter(
             UserModel.email == user_update.email,
-            UserModel.id != user_id
+            UserModel.id != user_id,
+            UserModel.deleted_at.is_(None)
         ).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -181,7 +183,7 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
 @router.delete("/api/users/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_active_admin)):
     """
-    ユーザーを削除（管理者のみ）
+    ユーザーを論理削除（管理者のみ）
     
     Args:
         user_id: 削除するユーザーID
@@ -194,10 +196,15 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserM
     Raises:
         HTTPException: ユーザーが見つからない場合
     """
-    db_user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    db_user = db.query(UserModel).filter(UserModel.id == user_id, UserModel.deleted_at.is_(None)).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     
-    db.delete(db_user)
+    # 自分自身を削除しようとしている場合はエラー
+    if db_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    
+    # 論理削除（deleted_atに現在時刻を設定）
+    db_user.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "User deleted successfully"} 
+    return {"message": "User soft deleted successfully"} 
