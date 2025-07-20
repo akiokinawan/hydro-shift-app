@@ -3,6 +3,7 @@ import { fetchSchedules } from "../lib/api";
 import Link from "next/link";
 import { useAuth } from '../hooks/useAuth';
 import { registerOrUnregisterDuty } from '../lib/api';
+import { useRouter } from 'next/router';
 
 const fieldId = 1; // 仮: 畑ID固定
 const today = new Date();
@@ -101,6 +102,14 @@ const CalendarPage: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [currentDate, setCurrentDate] = useState(today);
   const [firstLoad, setFirstLoad] = useState(true);
+  const router = useRouter();
+
+  // 認証チェック
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 600);
@@ -111,6 +120,7 @@ const CalendarPage: React.FC = () => {
 
   // スケジュールを取得（現在の月のみ）
   useEffect(() => {
+    if (!user) return; // ユーザーが認証されていない場合はデータ取得しない
     setLoading(true);
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -125,7 +135,7 @@ const CalendarPage: React.FC = () => {
         setLoading(false);
         setFirstLoad(false);
       });
-  }, [currentDate]);
+  }, [currentDate, user]);
 
   // schedules取得後、ログインユーザーの当番日をmyDutyDatesに反映
   useEffect(() => {
@@ -216,6 +226,8 @@ const CalendarPage: React.FC = () => {
     weekMatrix = getMonthMatrix(year, month);
   }
 
+  if (authLoading) return <main style={{ padding: 32 }}>認証チェック中...</main>;
+  if (!user) return null; // 認証されていない場合は何も表示しない
   if (loading && firstLoad) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
 

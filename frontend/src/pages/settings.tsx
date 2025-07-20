@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchFields, updateField, fetchFieldById, fetchFieldImage, uploadFieldImage } from "../lib/api";
 import { useAuth } from '../hooks/useAuth';
+import { useRouter } from 'next/router';
 
 const fieldId = 1; // 仮: 畑ID固定
 import dynamic from 'next/dynamic';
@@ -40,14 +41,23 @@ const SettingsPage: React.FC = () => {
   // const [markerIcon, setMarkerIcon] = useState<any>(null); // 削除
   const { user, loading: authLoading } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const router = useRouter();
+
+  // 認証チェック
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
+    if (!user) return; // ユーザーが認証されていない場合はデータ取得しない
     setLoading(true);
     fetchFields()
       .then(setFields)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   // useEffect(() => { // 削除
   //   import('leaflet').then(L => { // 削除
@@ -80,6 +90,7 @@ const SettingsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!user) return; // ユーザーが認証されていない場合はデータ取得しない
     fetchFieldById(fieldId)
       .then(async f => {
         setField(f);
@@ -87,7 +98,7 @@ const SettingsPage: React.FC = () => {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   // 畑画像の取得
   useEffect(() => {
@@ -115,6 +126,7 @@ const SettingsPage: React.FC = () => {
   };
 
   if (authLoading) return <main style={{ padding: 32 }}>認証チェック中...</main>;
+  if (!user) return null; // 認証されていない場合は何も表示しない
   if (loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
 

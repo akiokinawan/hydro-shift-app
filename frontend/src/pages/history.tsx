@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchHistories } from "../lib/api";
 import { useAuth } from '../hooks/useAuth';
+import { useRouter } from 'next/router';
 
 const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -11,11 +12,19 @@ const HistoryPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showUserPopup, setShowUserPopup] = useState(false);
+  const router = useRouter();
   
   // カレンダー表示用の状態
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getFullYear() * 100 + new Date().getMonth() + 1);
   const [isMobile, setIsMobile] = useState(false);
+
+  // 認証チェック
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 600);
@@ -26,6 +35,7 @@ const HistoryPage: React.FC = () => {
 
   // 履歴を取得
   useEffect(() => {
+    if (!user) return; // ユーザーが認証されていない場合はデータ取得しない
     setLoading(true);
     fetchHistories()
       .then((h) => {
@@ -38,8 +48,10 @@ const HistoryPage: React.FC = () => {
         setError(e.message);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
+  if (authLoading) return <main style={{ padding: 32 }}>認証チェック中...</main>;
+  if (!user) return null; // 認証されていない場合は何も表示しない
   if (loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
 
@@ -428,7 +440,7 @@ const HistoryPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ marginTop: 24, textAlign: 'center' }}>
+      <div style={{ marginTop: 32, marginBottom: 16, textAlign: 'center' }}>
         <a href="/" style={{ color: '#1976d2', textDecoration: 'none' }}>ダッシュボードへ戻る</a>
       </div>
 

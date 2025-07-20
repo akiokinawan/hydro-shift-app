@@ -26,14 +26,29 @@ export function useAuth(): AuthState {
   // 初期化時にローカルストレージからユーザー情報を取得
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
       const stored = localStorage.getItem('user');
+      
+      // トークンがない場合は認証なし
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
       if (stored) {
         try {
-        setUser(JSON.parse(stored));
+          setUser(JSON.parse(stored));
         } catch (error) {
           console.error('ユーザー情報の解析に失敗しました:', error);
           localStorage.removeItem('user');
+          localStorage.removeItem('access_token');
+          setUser(null);
         }
+      } else {
+        // ユーザー情報がない場合も認証なし
+        localStorage.removeItem('access_token');
+        setUser(null);
       }
       setLoading(false);
     }
@@ -46,7 +61,7 @@ export function useAuth(): AuthState {
   const logout = (): void => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
-    // setUser(null); ← これをコメントアウト
+    setUser(null);
     router.push('/login');
   };
 

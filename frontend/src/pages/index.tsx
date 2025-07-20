@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchSchedules, fetchWeather, fetchFieldById, createHistory, updateSchedule } from "../lib/api";
 import { useAuth } from '../hooks/useAuth';
+import { useRouter } from 'next/router';
 
 const fieldId = 1; // 仮: 畑ID固定
 const today = new Date();
@@ -19,9 +20,18 @@ const Dashboard: React.FC = () => {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [comment, setComment] = useState('');
   const isAdmin = user?.role === 'admin';
+  const router = useRouter();
+
+  // 認証チェック
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   // データを取得
   useEffect(() => {
+    if (!user) return; // ユーザーが認証されていない場合はデータ取得しない
     setLoading(true);
     Promise.all([
       fetchSchedules(fieldId, yyyyMM),
@@ -36,8 +46,10 @@ const Dashboard: React.FC = () => {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
+  if (authLoading) return <main style={{ padding: 32 }}>認証チェック中...</main>;
+  if (!user) return null; // 認証されていない場合は何も表示しない
   if (loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
 
