@@ -2,13 +2,13 @@ FROM node:18
 
 WORKDIR /app
 
-RUN corepack disable
-
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm install
 
 COPY . .
 
+RUN npm run build
+
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"] 
+CMD ["npm", "start"] 
