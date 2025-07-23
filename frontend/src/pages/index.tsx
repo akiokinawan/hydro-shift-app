@@ -84,18 +84,22 @@ const Dashboard: React.FC = () => {
     setCompletionLoading(true);
     
     try {
+      console.log('Attempting to fetch existing histories for schedule_id:', todaySchedule.id, 'user_id:', user.id);
       // 既存の履歴を検索
       const existingHistories = await fetchHistories(todaySchedule.id, user.id);
       const existingHistory = existingHistories.length > 0 ? existingHistories[0] : null;
 
       if (existingHistory) {
+        console.log('Existing history found, attempting to update history with ID:', existingHistory.id);
         // 履歴が既に存在する場合は更新
         await updateHistory(existingHistory.id, {
           executed_at: new Date().toISOString(),
           status: status,
           comment: commentText
         });
+        console.log('History updated successfully.');
       } else {
+        console.log('No existing history found, attempting to create new history for schedule_id:', todaySchedule.id);
         // 履歴が存在しない場合は新規作成
         await createHistory({
           schedule_id: todaySchedule.id,
@@ -104,19 +108,23 @@ const Dashboard: React.FC = () => {
           status: status,
           comment: commentText
         });
+        console.log('History created successfully.');
       }
       
+      console.log('Attempting to update schedule with ID:', todaySchedule.id, 'status:', status);
       // スケジュールを更新
       await updateSchedule(todaySchedule.id, {
         status: status, // 引数のstatusを使用
       });
-      
+      console.log('Schedule updated successfully.');
+
       // SWRのキャッシュを更新してUIに即時反映
       mutateSchedules();
 
       closeCommentModal(); // モーダルを閉じる
     } catch (err) {
       console.error('水かけ処理エラー:', err);
+      throw err; // エラーを再スローして、呼び出し元でキャッチされるようにする
     } finally {
       setCompletionLoading(false);
     }
