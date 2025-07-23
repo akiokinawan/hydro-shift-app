@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchWeather, fetchFieldById, createHistory, updateSchedule } from "../lib/api";
+import { fetchWeather, fetchFieldById, createHistory, updateSchedule, fetchHistories, updateHistory } from "../lib/api";
 import { useAuth } from '../hooks/useAuth';
 import { useSchedules } from '../hooks/useSchedules'; // useSchedulesをインポート
 import { useRouter } from 'next/router';
@@ -81,14 +81,27 @@ const Dashboard: React.FC = () => {
     setCompletionLoading(true);
     
     try {
-      // 履歴を登録
-      await createHistory({
-        schedule_id: todaySchedule.id,
-        user_id: user.id,
-        executed_at: new Date().toISOString(),
-        status: status, // 引数のstatusを使用
-        comment: commentText
-      });
+      // 既存の履歴を検索
+      const existingHistories = await fetchHistories(todaySchedule.id, user.id);
+      const existingHistory = existingHistories.length > 0 ? existingHistories[0] : null;
+
+      if (existingHistory) {
+        // 履歴が既に存在する場合は更新
+        await updateHistory(existingHistory.id, {
+          executed_at: new Date().toISOString(),
+          status: status,
+          comment: commentText
+        });
+      } else {
+        // 履歴が存在しない場合は新規作成
+        await createHistory({
+          schedule_id: todaySchedule.id,
+          user_id: user.id,
+          executed_at: new Date().toISOString(),
+          status: status,
+          comment: commentText
+        });
+      }
       
       // スケジュールを更新
       await updateSchedule(todaySchedule.id, {
