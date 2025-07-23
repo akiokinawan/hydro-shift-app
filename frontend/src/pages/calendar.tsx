@@ -128,3 +128,5 @@ const CalendarPage: React.FC = () => {
     </main>
   );
 }; 
+
+export default CalendarPage; 
