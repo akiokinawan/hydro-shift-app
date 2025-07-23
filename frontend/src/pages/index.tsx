@@ -8,7 +8,10 @@ import { useRouter } from 'next/router';
 const fieldId = 1; // 仮: 畑ID固定
 const today = new Date();
 const yyyyMM = today.toISOString().slice(0, 7);
-const yyyyMMdd = today.toISOString().slice(0, 10);
+const year = today.getFullYear();
+const month = String(today.getMonth() + 1).padStart(2, '0');
+const day = String(today.getDate()).padStart(2, '0');
+const yyyyMMdd = `${year}-${month}-${day}`;
 
 const Dashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
