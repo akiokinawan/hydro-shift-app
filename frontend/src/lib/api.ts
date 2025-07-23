@@ -171,10 +171,27 @@ export interface Weather {
  * @throws APIエラーが発生した場合
  */
 async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    // 認証エラーの場合、トークンを削除してログインページにリダイレクト
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+    // リダイレクトするため、このPromiseは解決されないままで良い
+    // ただし、呼び出し元でエラーがキャッチされないように空のPromiseを返す
+    return new Promise(() => {}); 
+  }
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`API Error: ${response.status} - ${errorText}`);
   }
+  
+  // 204 No Content の場合は、JSONパースを試みずにnullを返す
+  if (response.status === 204) {
+    return null as T;
+  }
+
   return response.json();
 }
 
