@@ -224,7 +224,7 @@ const SettingsPage: React.FC = () => {
               )}
               
               {/* 基本情報編集 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="admin-settings-grid">
                 <div>
                   <label style={{ display: 'block', fontSize: 14, color: '#666', marginBottom: 4 }}>
                     畑の名前
@@ -418,6 +418,18 @@ const SettingsPage: React.FC = () => {
           ダッシュボードへ戻る
         </Link>
       </div>
+      <style jsx>{`
+        .admin-settings-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        @media (max-width: 600px) {
+          .admin-settings-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </main>
   );
 };

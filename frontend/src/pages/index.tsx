@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchSchedules, fetchWeather, fetchFieldById, createHistory, updateSchedule } from "../lib/api";
+import { fetchWeather, fetchFieldById, createHistory, updateSchedule } from "../lib/api";
 import { useAuth } from '../hooks/useAuth';
+import { useSchedules } from '../hooks/useSchedules'; // useSchedulesをインポート
 import { useRouter } from 'next/router';
 
 const fieldId = 1; // 仮: 畑ID固定
@@ -10,17 +11,21 @@ const yyyyMM = today.toISOString().slice(0, 7);
 const yyyyMMdd = today.toISOString().slice(0, 10);
 
 const Dashboard: React.FC = () => {
-  const [schedules, setSchedules] = useState<any[]>([]);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // SWRを使ってスケジュールデータを取得
+  const { schedules, isLoading: schedulesLoading, isError: schedulesError, mutateSchedules } = useSchedules(user ? fieldId : null, yyyyMM);
+
   const [weather, setWeather] = useState<any>(null);
   const [field, setField] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
   const [completionLoading, setCompletionLoading] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [comment, setComment] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('完了'); // ステータス管理用のstateを追加
   const isAdmin = user?.role === 'admin';
-  const router = useRouter();
 
   // 認証チェック
   useEffect(() => {
@@ -29,17 +34,15 @@ const Dashboard: React.FC = () => {
     }
   }, [authLoading, user, router]);
 
-  // データを取得
+  // 天気と畑の情報を取得 (スケジュールとは分離)
   useEffect(() => {
-    if (!user) return; // ユーザーが認証されていない場合はデータ取得しない
+    if (!user) return;
     setLoading(true);
     Promise.all([
-      fetchSchedules(fieldId, yyyyMM),
       fetchWeather(fieldId, yyyyMMdd),
       fetchFieldById(fieldId)
     ])
-      .then(([s, w, f]) => {
-        setSchedules(s);
+      .then(([w, f]) => {
         setWeather(w);
         setField(f);
         setError(null);
@@ -49,13 +52,14 @@ const Dashboard: React.FC = () => {
   }, [user]);
 
   if (authLoading) return <main style={{ padding: 32 }}>認証チェック中...</main>;
-  if (!user) return null; // 認証されていない場合は何も表示しない
-  if (loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
-  if (error) return <main style={{ padding: 32, color: 'red' }}>エラー: {error}</main>;
+  if (!user) return null;
+  if (schedulesLoading || loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
+  if (schedulesError || error) return <main style={{ padding: 32, color: 'red' }}>エラー: {schedulesError?.message || error}</main>;
 
-  const todaySchedule = schedules.find((sch) => sch.date === yyyyMMdd);
+  const todaySchedule = schedules?.find((sch) => sch.date === yyyyMMdd);
   const isMyDuty = todaySchedule && user && todaySchedule.user_id === user.id;
   const isCompleted = todaySchedule && todaySchedule.status === '完了';
+  const isSkipped = todaySchedule && todaySchedule.status === 'スキップ'; // スキップ状態を追加
   
   // デバッグ用: 現在の状態をログ出力
   console.log('現在の状態:', {
@@ -63,52 +67,40 @@ const Dashboard: React.FC = () => {
     isMyDuty,
     user: user?.id,
     scheduleStatus: todaySchedule?.status,
-    isCompleted
+    isCompleted,
+    isSkipped
   });
 
-  // 水かけ完了処理
-  const handleCompleteDuty = async (commentText: string = '水かけ完了') => {
+  // 水かけ完了/スキップ処理
+  const handleCompleteDuty = async (status: string, commentText: string) => {
     if (!todaySchedule || !user) {
-      console.log('完了処理中止: todayScheduleまたはuserが存在しません', { todaySchedule, user });
+      console.log('処理中止: todayScheduleまたはuserが存在しません', { todaySchedule, user });
       return;
     }
     
-    const token = localStorage.getItem('access_token');
-    console.log('認証トークン:', token ? '存在します' : '存在しません');
-    
-    console.log('完了処理開始:', { scheduleId: todaySchedule.id, userId: user.id });
     setCompletionLoading(true);
     
     try {
       // 履歴を登録
-      console.log('履歴登録開始');
       await createHistory({
         schedule_id: todaySchedule.id,
         user_id: user.id,
         executed_at: new Date().toISOString(),
-        status: '完了',
+        status: status, // 引数のstatusを使用
         comment: commentText
       });
       
-      console.log('履歴登録完了');
-      
       // スケジュールを更新
-      console.log('スケジュール更新開始');
       await updateSchedule(todaySchedule.id, {
-        status: '完了'
+        status: status, // 引数のstatusを使用
       });
       
-      console.log('スケジュール更新完了');
-      
-      // スケジュール一覧を再取得
-      console.log('スケジュール再取得開始');
-      const updatedSchedules = await fetchSchedules(fieldId, yyyyMM);
-      console.log('更新後のスケジュール:', updatedSchedules);
-      setSchedules(updatedSchedules);
-      setShowCommentModal(false);
-      setComment('');
+      // SWRのキャッシュを更新してUIに即時反映
+      mutateSchedules();
+
+      closeCommentModal(); // モーダルを閉じる
     } catch (err) {
-      console.error('水かけ完了処理エラー:', err);
+      console.error('水かけ処理エラー:', err);
     } finally {
       setCompletionLoading(false);
     }
@@ -123,18 +115,19 @@ const Dashboard: React.FC = () => {
   const closeCommentModal = () => {
     setShowCommentModal(false);
     setComment('');
+    setSelectedStatus('完了'); // モーダルを閉じるときにステータスをリセット
   };
 
   // コメント付きで完了処理を実行
   const handleCompleteWithComment = () => {
-    handleCompleteDuty(comment || '水かけ完了');
+    handleCompleteDuty(selectedStatus, comment || (selectedStatus === '完了' ? '水かけ完了' : 'スキップしました'));
   };
 
 
   // 完了状態を判定
   const getCompletionStatus = () => {
     if (!todaySchedule) return null;
-    return todaySchedule.status === '完了' ? '完了' : '未完了';
+    return todaySchedule.status;
   };
 
   // 水かけ判定ロジック
@@ -213,7 +206,7 @@ const Dashboard: React.FC = () => {
               {todaySchedule && (
                 <>
                   {isMyDuty ? (
-                    !isCompleted ? (
+                    !isCompleted && !isSkipped ? (
                       <button
                         onClick={openCommentModal}
                         disabled={completionLoading}
@@ -229,24 +222,24 @@ const Dashboard: React.FC = () => {
                           opacity: completionLoading ? 0.6 : 1
                         }}
                       >
-                        {completionLoading ? '処理中...' : '完了'}
+                        {completionLoading ? '処理中...' : '実施報告'}
                       </button>
                     ) : (
                       <div style={{
-                        background: '#E8F5E8',
-                        color: '#2E7D32',
+                        background: isCompleted ? '#E8F5E8' : '#f5f5f5',
+                        color: isCompleted ? '#2E7D32' : '#757575',
                         padding: '6px 12px',
                         borderRadius: 6,
                         fontSize: 14,
                         fontWeight: 500
                       }}>
-                        完了
+                        {todaySchedule.status}
                       </div>
                     )
                   ) : (
                     <div style={{
-                      background: isCompleted ? '#E8F5E8' : '#FFF3E0',
-                      color: isCompleted ? '#2E7D32' : '#F57C00',
+                      background: isCompleted ? '#E8F5E8' : (isSkipped ? '#f5f5f5' : '#FFF3E0'),
+                      color: isCompleted ? '#2E7D32' : (isSkipped ? '#757575' : '#F57C00'),
                       padding: '6px 12px',
                       borderRadius: 6,
                       fontSize: 14,
@@ -423,25 +416,52 @@ const Dashboard: React.FC = () => {
             maxWidth: 400,
             boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
           }}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#1976d2' }}>水かけ完了</h3>
-            <p style={{ margin: '0 0 16px 0', color: '#666' }}>
-              コメントを入力してください（任意）
-            </p>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="例: 全体に水をかけた、雨が降っていたので少なめにした など"
-              style={{
-                width: '100%',
-                minHeight: 100,
-                padding: 12,
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                fontSize: 14,
-                resize: 'vertical',
-                marginBottom: 16
-              }}
-            />
+            <h3 style={{ margin: '0 0 16px 0', color: '#1976d2' }}>実施報告</h3>
+            
+            {/* ステータス選択プルダウン */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 14, color: '#666', marginBottom: 8 }}>
+                ステータス
+              </label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  background: 'white'
+                }}
+              >
+                <option value="完了">完了</option>
+                <option value="スキップ">スキップ</option>
+              </select>
+            </div>
+
+            {/* コメント入力 */}
+            <div>
+              <label style={{ display: 'block', fontSize: 14, color: '#666', marginBottom: 8 }}>
+                コメント（任意）
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={selectedStatus === '完了' ? "例: 全体にたっぷり水をかけた" : "例: 雨が降っていたため不要と判断"}
+                style={{
+                  width: '100%',
+                  minHeight: 100,
+                  padding: 12,
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  resize: 'vertical',
+                  marginBottom: 16
+                }}
+              />
+            </div>
+
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button
                 onClick={closeCommentModal}
@@ -473,7 +493,7 @@ const Dashboard: React.FC = () => {
                   opacity: completionLoading ? 0.6 : 1
                 }}
               >
-                {completionLoading ? '処理中...' : '完了'}
+                {completionLoading ? '処理中...' : '報告する'}
               </button>
             </div>
           </div>

@@ -14,6 +14,7 @@ class ScheduleStatus(enum.Enum):
     """スケジュール状態の列挙型"""
     PENDING = "未実施"   # 未実施
     COMPLETED = "完了"   # 完了
+    SKIPPED = "スキップ" # スキップ
 
 class Schedule(Base):
     """スケジュールテーブルのモデル"""
