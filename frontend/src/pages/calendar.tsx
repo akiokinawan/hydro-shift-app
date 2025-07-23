@@ -127,4 +127,6 @@ const CalendarPage: React.FC = () => {
       {/* (中略...凡例とフッター) */}
     </main>
   );
-}; 
+};
+
+export default CalendarPage; 
