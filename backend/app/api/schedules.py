@@ -234,7 +234,9 @@ def update_schedule(schedule_id: int, schedule_update: ScheduleUpdate, db: Sessi
                 break
         
         if status_enum is None:
+            print(f"DEBUG: Invalid status received: {schedule_update.status}")
             raise HTTPException(status_code=400, detail="Invalid status")
+        print(f"DEBUG: Updating schedule status from {db_schedule.status} to {status_enum.value}")
         db_schedule.status = status_enum
     
     # コメントの更新
