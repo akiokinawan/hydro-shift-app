@@ -1,12 +1,12 @@
-fastapi
+fastapi==0.116.1
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
-alembic 
+alembic
 requests
 PyJWT
 python-multipart
-passlib[bcrypt]
+passlib
+bcrypt
 email-validator
-fastapi==0.116.1
 starlette==0.47.1
