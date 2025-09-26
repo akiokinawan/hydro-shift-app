@@ -46,6 +46,14 @@ def db_health_check():
         result = conn.execute(text("SELECT 1")).scalar()
     return {"db": result}
 
+
+# warmup用エンドポイント
+@app.get("/api/warmup")
+def warmup():
+    """サーバーのコールドスタートを防ぐためのエンドポイント"""
+    return {"status": "ok"}
+
+
 # APIルーターの登録
 app.include_router(schedules.router)
 app.include_router(histories.router)
