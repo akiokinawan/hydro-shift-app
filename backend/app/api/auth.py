@@ -36,7 +36,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         bool: パスワードが一致するかどうか
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(plain_password[:72], hashed_password)
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     """
@@ -119,8 +119,8 @@ def signup(signup_req: SignupRequest, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # パスワードハッシュ化
-    hashed_password = pwd_context.hash(signup_req.password)
+    # パスワードハッシュ化 (72バイトに切り詰め)
+    hashed_password = pwd_context.hash(signup_req.password[:72])
     
     # ユーザーの作成
     user = UserModel(
