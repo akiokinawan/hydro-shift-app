@@ -3,14 +3,50 @@
 水かけ実行履歴の管理を提供するAPIエンドポイント
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+import os
+import requests
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks # BackgroundTasksを追加
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
 from app.database import get_db
-from app.models import History as HistoryModel, Schedule as ScheduleModel, User as UserModel
+from app.models import History as HistoryModel, Schedule as ScheduleModel, User as UserModel # ScheduleModel, UserModelも必要
+
+# LINE Messaging API設定
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_GROUP_ID = os.getenv("LINE_GROUP_ID") # 環境変数からグループIDを取得
+
+# LINE通知を送信する関数
+def send_line_notification(group_id: str, message: str):
+    if not LINE_CHANNEL_ACCESS_TOKEN:
+        print("LINE_CHANNEL_ACCESS_TOKEN is not set.")
+        return
+    if not group_id:
+        print("LINE_GROUP_ID is not set.")
+        return
+
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "to": group_id,
+        "messages": [
+            {
+                "type": "text",
+                "text": message
+            }
+        ]
+    }
+    try:
+        response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload)
+        response.raise_for_status() # HTTPエラーがあれば例外を発生させる
+        print(f"LINE notification sent successfully: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send LINE notification: {e}")
+
 
 router = APIRouter()
 
@@ -158,25 +194,22 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
     return db_history
 
 @router.patch("/api/histories/{history_id}", response_model=History)
-def update_history(history_id: int, history_update: HistoryUpdate, db: Session = Depends(get_db)):
+def update_history(
+    history_id: int,
+    history_update: HistoryUpdate,
+    background_tasks: BackgroundTasks, # BackgroundTasksを追加
+    db: Session = Depends(get_db)
+):
     """
     履歴を更新
-    
-    Args:
-        history_id: 更新する履歴ID
-        history_update: 更新する履歴情報
-        db: データベースセッション
-        
-    Returns:
-        History: 更新された履歴情報
-        
-    Raises:
-        HTTPException: 履歴が見つからない場合
     """
     db_history = db.query(HistoryModel).filter(HistoryModel.id == history_id).first()
     if db_history is None:
         raise HTTPException(status_code=404, detail="History not found")
     
+    # 変更前のステータスを保存
+    old_status = db_history.status
+
     # 実行日時の更新
     if history_update.executed_at is not None:
         db_history.executed_at = history_update.executed_at
@@ -191,6 +224,22 @@ def update_history(history_id: int, history_update: HistoryUpdate, db: Session =
     
     db.commit()
     db.refresh(db_history)
+
+    # ステータスが変更され、「完了」または「スキップ」になった場合にLINE通知を送信
+    if history_update.status and history_update.status != old_status and history_update.status in ["完了", "スキップ"]:
+        user = db.query(UserModel).filter(UserModel.id == db_history.user_id).first()
+        # schedule = db.query(ScheduleModel).filter(ScheduleModel.id == db_history.schedule_id).first() # 畑名取得のため
+
+        user_name = user.name if user else "不明なユーザー"
+        # field_name = schedule.field.name if schedule and schedule.field else "不明な畑" # 畑名取得は後回し
+
+        message = f"{user_name}さんが水やりを「{history_update.status}」しました！" # 畑名なしのメッセージ
+        
+        if LINE_GROUP_ID: # グループIDが設定されている場合のみ通知
+            background_tasks.add_task(send_line_notification, LINE_GROUP_ID, message)
+        else:
+            print("LINE_GROUP_ID is not set, skipping LINE notification.")
+
     return db_history
 
 @router.delete("/api/histories/{history_id}")
