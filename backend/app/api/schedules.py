@@ -3,7 +3,9 @@
 水かけ当番のスケジュール管理を提供するAPIエンドポイント
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, Body
+import os
+import requests
+from fastapi import APIRouter, HTTPException, Depends, Query, Body, BackgroundTasks # BackgroundTasksを追加
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -11,6 +13,40 @@ from datetime import datetime, date
 
 from app.database import get_db
 from app.models import Schedule as ScheduleModel, User as UserModel, Field as FieldModel, ScheduleStatus, History as HistoryModel
+
+# LINE Messaging API設定
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_GROUP_ID = os.getenv("LINE_GROUP_ID") # 環境変数からグループIDを取得
+
+# LINE通知を送信する関数
+def send_line_notification(group_id: str, message: str):
+    if not LINE_CHANNEL_ACCESS_TOKEN:
+        print("LINE_CHANNEL_ACCESS_TOKEN is not set.")
+        return
+    if not group_id:
+        print("LINE_GROUP_ID is not set.")
+        return
+
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "to": group_id,
+        "messages": [
+            {
+                "type": "text",
+                "text": message
+            }
+        ]
+    }
+    try:
+        response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload)
+        response.raise_for_status() # HTTPエラーがあれば例外を発生させる
+        print(f"LINE notification sent successfully: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send LINE notification: {e}")
+
 
 router = APIRouter()
 
@@ -188,25 +224,22 @@ def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db)):
     return db_schedule
 
 @router.patch("/api/schedules/{schedule_id}", response_model=Schedule)
-def update_schedule(schedule_id: int, schedule_update: ScheduleUpdate, db: Session = Depends(get_db)):
+def update_schedule(
+    schedule_id: int,
+    schedule_update: ScheduleUpdate,
+    background_tasks: BackgroundTasks, # BackgroundTasksを追加
+    db: Session = Depends(get_db)
+):
     """
     スケジュールを更新
-    
-    Args:
-        schedule_id: 更新するスケジュールID
-        schedule_update: 更新するスケジュール情報
-        db: データベースセッション
-        
-    Returns:
-        Schedule: 更新されたスケジュール情報
-        
-    Raises:
-        HTTPException: スケジュール、畑、またはユーザーが見つからない場合
     """
     db_schedule = db.query(ScheduleModel).filter(ScheduleModel.id == schedule_id).first()
     if db_schedule is None:
         raise HTTPException(status_code=404, detail="Schedule not found")
     
+    # 変更前のステータスを保存
+    old_status = db_schedule.status.value if db_schedule.status else None # Enumから値を取得
+
     # 畑IDの更新
     if schedule_update.field_id is not None:
         field = db.query(FieldModel).filter(FieldModel.id == schedule_update.field_id).first()
@@ -243,6 +276,22 @@ def update_schedule(schedule_id: int, schedule_update: ScheduleUpdate, db: Sessi
     
     db.commit()
     db.refresh(db_schedule)
+
+    # ステータスが変更され、「完了」または「スキップ」になった場合にLINE通知を送信
+    if schedule_update.status and schedule_update.status != old_status and schedule_update.status in ["完了", "スキップ"]:
+        user = db.query(UserModel).filter(UserModel.id == db_schedule.user_id).first()
+        field = db.query(FieldModel).filter(FieldModel.id == db_schedule.field_id).first()
+        
+        user_name = user.name if user else "不明なユーザー"
+        field_name = field.name if field else "不明な畑"
+
+        message = f"{user_name}さんが{field_name}の水やりを「{schedule_update.status}」しました！"
+        
+        if LINE_GROUP_ID: # グループIDが設定されている場合のみ通知
+            background_tasks.add_task(send_line_notification, LINE_GROUP_ID, message)
+        else:
+            print("LINE_GROUP_ID is not set, skipping LINE notification.")
+
     return db_schedule
 
 @router.delete("/api/schedules/{schedule_id}")
