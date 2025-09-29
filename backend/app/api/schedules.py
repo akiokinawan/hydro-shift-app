@@ -286,6 +286,8 @@ def update_schedule(
         field_name = field.name if field else "不明な畑"
 
         message = f"{user_name}さんが{field_name}の水やりを「{schedule_update.status}」しました！"
+        if db_schedule.comment: # コメントがあれば追加
+            message += f"\nコメント: {db_schedule.comment}"
         
         if LINE_GROUP_ID: # グループIDが設定されている場合のみ通知
             background_tasks.add_task(send_line_notification, LINE_GROUP_ID, message)
