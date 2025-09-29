@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Body, BackgroundTa
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 
 from app.database import get_db
 from app.models import Schedule as ScheduleModel, User as UserModel, Field as FieldModel, ScheduleStatus, History as HistoryModel
@@ -285,9 +285,15 @@ def update_schedule(
         user_name = user.name if user else "不明なユーザー"
         field_name = field.name if field else "不明な畑"
 
-        message = f"{user_name}さんが{field_name}の水やりを「{schedule_update.status}」しました！"
+        # 日本時間 (UTC+9)
+        JST = timezone(timedelta(hours=9))
+
+        # 現在の日本時間を取得してフォーマット
+        now_jst = datetime.now(JST).strftime("%Y-%m-%d %H:%M")
+
+        message = f"{now_jst}\n{user_name} が水やり【{schedule_update.status}】したよ！"
         if db_schedule.comment: # コメントがあれば追加
-            message += f"\nコメント: {db_schedule.comment}"
+            message += f"\n▼コメント▼\n{db_schedule.comment}"
         
         if LINE_GROUP_ID: # グループIDが設定されている場合のみ通知
             background_tasks.add_task(send_line_notification, LINE_GROUP_ID, message)
