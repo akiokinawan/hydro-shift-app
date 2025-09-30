@@ -335,10 +335,15 @@ const CalendarPage: React.FC = () => {
               // 当日の判定（実際の今日の日付と比較）
               const isToday = (year === getTodayYear() && month === getTodayMonth() && d === getTodayDate());
               let bg = 'transparent';
-              if (isToday) bg = '#1976d2';
-              else if (isMyDuty && isUnregister) bg = '#ffcdd2';
-              else if (isMyDuty) bg = '#ffe082';
-              else if (isRegister) bg = '#fff9c4';
+              if (isMyDuty && isUnregister) {
+                bg = '#ffcdd2'; // 解除選択中
+              } else if (isRegister) {
+                bg = isToday ? '#1976d2' : '#fff9c4'; // 登録選択中。当日なら濃い青
+              } else if (isMyDuty) {
+                bg = '#ffe082'; // 自分の担当日
+              } else if (isToday) {
+                bg = '#bbdefb'; // 未選択の当日
+              }
               return (
                 <div key={d} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, background: bg, borderRadius: 6, padding: '6px 8px', border: '1px solid #eee', cursor: d ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}
                   onClick={() => {
@@ -420,10 +425,15 @@ const CalendarPage: React.FC = () => {
                     // 当日の判定（実際の今日の日付と比較）
                     const isToday = d ? (year === getTodayYear() && month === getTodayMonth() && d === getTodayDate()) : false;
                   let bg = 'transparent';
-                    if (isToday) bg = '#1976d2';
-                    else if (isMyDuty && isUnregister) bg = '#ffcdd2';
-                    else if (isMyDuty) bg = '#ffe082';
-                    else if (isRegister) bg = '#fff9c4';
+                    if (isMyDuty && isUnregister) {
+                      bg = '#ffcdd2'; // 解除選択中
+                    } else if (isRegister) {
+                      bg = isToday ? '#1976d2' : '#fff9c4'; // 登録選択中。当日なら濃い青
+                    } else if (isMyDuty) {
+                      bg = '#ffe082'; // 自分の担当日
+                    } else if (isToday) {
+                      bg = '#bbdefb'; // 未選択の当日
+                    }
                     // 担当者名取得
                     // const dutyUserName = d ? getDutyUserName(d) : null; // ← 担当者名はPC表示では出さない
                   return (
@@ -462,7 +472,7 @@ const CalendarPage: React.FC = () => {
                       }}
                     >
                       {d ? (
-                          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '12px', background: isToday ? '#1976d2' : 'transparent', color: isToday ? '#fff' : color, fontWeight: isToday ? 700 : 500 }}>
+                          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '12px', background: 'transparent', color: isToday ? (isRegister ? '#fff' : '#222') : color, fontWeight: isToday ? 700 : 500 }}>
                           <div style={{ fontSize: '12px', lineHeight: 1, marginBottom: isOtherUserDuty ? 2 : 0 }}>{d}</div>
                             {/* 担当者名表示はPC表示では出さない */}
                           {isOtherUserDuty && (
