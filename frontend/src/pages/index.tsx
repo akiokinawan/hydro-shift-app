@@ -115,6 +115,7 @@ const Dashboard: React.FC = () => {
       // スケジュールを更新
       await updateSchedule(todaySchedule.id, {
         status: status, // 引数のstatusを使用
+        comment: commentText,
       });
       console.log('Schedule updated successfully.');
 
