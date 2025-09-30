@@ -323,10 +323,11 @@ export async function deleteField(fieldId: number): Promise<{ message: string }>
  * @param fieldId - 畑ID（フィルタ用）
  * @param month - 月指定（YYYY-MM形式）
  */
-export async function fetchSchedules(fieldId?: number, month?: string): Promise<Schedule[]> {
+export async function fetchSchedules(fieldId?: number, month?: string, day?: string): Promise<Schedule[]> {
   const params = new URLSearchParams();
   if (fieldId) params.append('field_id', fieldId.toString());
   if (month) params.append('month', month);
+  if (day) params.append('day', day); // dayパラメータを追加
   
   const res = await fetchWithAuth(`${API_BASE}/api/schedules?${params.toString()}`);
   return handleResponse<Schedule[]>(res);

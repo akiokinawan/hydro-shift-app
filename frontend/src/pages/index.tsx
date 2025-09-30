@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
   const router = useRouter();
 
   // SWRを使ってスケジュールデータを取得
-  const { schedules, isLoading: schedulesLoading, isError: schedulesError, mutateSchedules } = useSchedules(user ? fieldId : null, yyyyMM);
+  const { schedules, isLoading: schedulesLoading, isError: schedulesError, mutateSchedules } = useSchedules(user ? fieldId : null, undefined, yyyyMMdd);
 
   const [weather, setWeather] = useState<any>(null);
   const [field, setField] = useState<any>(null);
@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
   if (schedulesLoading || loading) return <main style={{ padding: 32 }}>読み込み中...</main>;
   if (schedulesError || error) return <main style={{ padding: 32, color: 'red' }}>エラー: {schedulesError?.message || error}</main>;
 
-  const todaySchedule = schedules?.find((sch) => sch.date === yyyyMMdd);
+  const todaySchedule = schedules?.[0]; // 配列の最初の要素を取得
   const isMyDuty = todaySchedule && user && todaySchedule.user_id === user.id;
   const isCompleted = todaySchedule && todaySchedule.status === '完了';
   const isSkipped = todaySchedule && todaySchedule.status === 'スキップ'; // スキップ状態を追加

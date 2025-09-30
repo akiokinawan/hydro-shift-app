@@ -108,6 +108,7 @@ class DutyRequest(BaseModel):
 def get_schedules(
     field_id: Optional[int] = Query(None),
     month: Optional[str] = Query(None),
+    day: Optional[str] = Query(None), # dayパラメータを追加
     db: Session = Depends(get_db)
 ):
     """
@@ -116,6 +117,7 @@ def get_schedules(
     Args:
         field_id: 畑ID（フィルタ用）
         month: 月指定（YYYY-MM形式）
+        day: 日付指定 (YYYY-MM-DD形式)
         db: データベースセッション
         
     Returns:
@@ -127,21 +129,29 @@ def get_schedules(
     if field_id:
         query = query.filter(ScheduleModel.field_id == field_id)
     
-    # 月でフィルタ
-    if month:
+    if day:
+        # dayが指定されている場合は、その日付でフィルタ
+        try:
+            target_date = datetime.strptime(day, "%Y-%m-%d").date()
+            query = query.filter(ScheduleModel.date == target_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format for day. Use YYYY-MM-DD.")
+    elif month:
         # month形式: "2024-06" → その月のスケジュールを取得
-        year, month_num = month.split("-")
-        year = int(year)
-        month_num = int(month_num)
-        if month_num < 12:
-            next_month = date(year, month_num + 1, 1)
-        else:
-            next_month = date(year + 1, 1, 1)
-        query = query.filter(
-            ScheduleModel.date >= date(year, month_num, 1),
-            ScheduleModel.date < next_month
-        )
-    
+        try:
+            year, month_num = map(int, month.split("-"))
+            start_date = date(year, month_num, 1)
+            if month_num < 12:
+                end_date = date(year, month_num + 1, 1)
+            else:
+                end_date = date(year + 1, 1, 1)
+            query = query.filter(
+                ScheduleModel.date >= start_date,
+                ScheduleModel.date < end_date
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.")
+
     schedules = query.all()
     return schedules
 
