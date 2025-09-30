@@ -297,13 +297,26 @@ def update_schedule(
 
         # 日本時間 (UTC+9)
         JST = timezone(timedelta(hours=9))
-
-        # 現在の日本時間を取得してフォーマット
         now_jst = datetime.now(JST).strftime("%Y-%m-%d %H:%M")
+        
+        # 当番の日付をフォーマット
+        duty_date = db_schedule.date.strftime("%Y-%m-%d")
 
-        message = f"{now_jst}\n{user_name} が水やり【{schedule_update.status}】したよ！"
-        if db_schedule.comment: # コメントがあれば追加
-            message += f"\n▼コメント▼\n{db_schedule.comment}"
+        # コメントがない場合のデフォルトメッセージ
+        comment_text = db_schedule.comment if db_schedule.comment else "コメントはありません"
+
+        # メッセージ本文を作成
+        message_lines = [
+            "- - - - - - - - - - -",
+            "【水やり当番 報告】",
+            "- - - - - - - - - - -",
+            f"🗓️ 日付：{duty_date}",
+            f"担当：{user_name}",
+            "📝 コメント：",
+            comment_text,
+            ""
+        ]
+        message = "\n".join(message_lines)
         
         if LINE_GROUP_ID: # グループIDが設定されている場合のみ通知
             background_tasks.add_task(send_line_notification, LINE_GROUP_ID, message)
