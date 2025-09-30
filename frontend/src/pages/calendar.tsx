@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { fetchSchedules } from "../lib/api";
 import Link from "next/link";
 import { useAuth } from '../hooks/useAuth';
+import { mutate } from 'swr';
 import { registerOrUnregisterDuty } from '../lib/api';
 import { useRouter } from 'next/router';
 
@@ -512,10 +513,11 @@ const CalendarPage: React.FC = () => {
                   action: 'register',
                 });
                 }
-                // API後に再取得
+                // API後に再取得し、SWRキャッシュを更新
                 const yyyyMM = `${year}-${String(month + 1).padStart(2, '0')}`;
                 const newSchedules = await fetchSchedules(fieldId, yyyyMM);
                 setSchedules(newSchedules);
+                mutate([fieldId, yyyyMM], newSchedules, false); // キャッシュを更新
                 setRegisterDates([]);
               } catch (e) {
                 alert('登録に失敗しました');
@@ -555,10 +557,11 @@ const CalendarPage: React.FC = () => {
                   action: 'unregister',
                 });
                 }
-                // API後に再取得
+                // API後に再取得し、SWRキャッシュを更新
                 const yyyyMM = `${year}-${String(month + 1).padStart(2, '0')}`;
                 const newSchedules = await fetchSchedules(fieldId, yyyyMM);
                 setSchedules(newSchedules);
+                mutate([fieldId, yyyyMM], newSchedules, false); // キャッシュを更新
                 setUnregisterDates([]);
               } catch (e) {
                 alert('解除に失敗しました');
