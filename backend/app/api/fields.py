@@ -10,6 +10,7 @@ from typing import List, Optional
 from datetime import datetime
 import base64
 import requests
+from urllib.parse import quote
 
 from app.database import get_db
 from app.models import Field as FieldModel, User as UserModel
@@ -52,16 +53,23 @@ def geocode_address(address: str) -> tuple[Optional[float], Optional[float]]:
     Returns:
         tuple: (緯度, 経度) 取得失敗時は (None, None)
     """
-    url = f"https://nominatim.openstreetmap.org/search?format=json&q={address}"
+    encoded_address = quote(address)
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded_address}"
     try:
-        resp = requests.get(url, timeout=5, headers={"User-Agent": "mizukake-toban-app"})
+        resp = requests.get(url, timeout=10, headers={"User-Agent": "mizukake-toban-app"})
         resp.raise_for_status()
         data = resp.json()
         if data and len(data) > 0:
             return float(data[0]["lat"]), float(data[0]["lon"])
+        else:
+            print(f"[geocode_address] 住所が見つかりませんでした: {address}")
+            return None, None
+    except requests.exceptions.RequestException as e:
+        print(f"[geocode_address] APIリクエスト失敗: {e}")
+        return None, None
     except Exception as e:
-        print(f"[geocode_address] 住所→緯度経度変換失敗: {e}")
-    return None, None
+        print(f"[geocode_address] 予期せぬエラー: {e}")
+        return None, None
 
 def _convert_image_to_base64(image_bytes: Optional[bytes]) -> Optional[str]:
     """
